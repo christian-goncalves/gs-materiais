@@ -151,3 +151,11 @@ Este arquivo mantém o histórico cronológico de decisões, mudanças relevante
 - Contexto: uma nova planilha foi disponibilizada para substituir o ambiente de validação indisponível.
 - Definição: a conta de serviço geral configurou a aba `formulario-encompasso` com 17 cabeçalhos; fixture sintético criou uma linha, a repetição do UUID retornou 200 sem nova linha, a gravação literal/UTC foi validada, o acesso anônimo não retornou os dados e o registro sintético foi reconciliado.
 - Impacto: checkpoint da Fase 4 aprovado; Fase 5 liberada usando exclusivamente a planilha controlada.
+
+## 2026-09-01 - Roteamento Vercel exige diretório explícito
+
+- Tipo: descoberta
+- Status: concluída
+- Contexto: o primeiro preview executou o build, mas a configuração do projeto procurou um diretório `public` inexistente.
+- Definição: `vercel.json` foi criado com somente `outputDirectory: "."`, mantendo o frontend estático na raiz e a Function em `/api`.
+- Impacto: Fase 5, novo deploy de preview e validação de roteamento.
