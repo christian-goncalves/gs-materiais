@@ -1,0 +1,22 @@
+# Local secrets and provider state
+.env
+.env.*
+!.env.example
+.vercel/
+
+# Dependencies and generated artifacts
+node_modules/
+coverage/
+reports/
+test-results/
+*.log
+*.tmp
+*.bak
+
+# Project-internal materials
+INFORMACAO.md
+google-api_drive-sheets-gmail-docs (Cópia)/
+
+# Local tooling and OS files
+.DS_Store
+.runtime/
