@@ -159,3 +159,11 @@ Este arquivo mantém o histórico cronológico de decisões, mudanças relevante
 - Contexto: o primeiro preview executou o build, mas a configuração do projeto procurou um diretório `public` inexistente.
 - Definição: `vercel.json` foi criado com somente `outputDirectory: "."`, mantendo o frontend estático na raiz e a Function em `/api`.
 - Impacto: Fase 5, novo deploy de preview e validação de roteamento.
+
+## 2026-09-01 - Preview controlado validado e proteção pública pendente
+
+- Tipo: validação
+- Status: bloqueada
+- Contexto: o preview foi construído no commit validado, recebeu as seis variáveis server-side persistentes e operou com a planilha de validação; o endpoint real retornou 201/200 para o mesmo UUID, a linha sintética foi reconciliada e os smoke checks 405/415/400/429 foram observados sem CORS curinga no endpoint.
+- Definição: a URL de preview continua protegida por SSO automático e redireciona acesso anônimo para login. A desativação dessa proteção foi recusada pelo controle de segurança por ampliar exposição pública; não haverá workaround nem promoção para produção enquanto esse gate permanecer sem autorização específica.
+- Impacto: Fase 5 validada quanto ao código, integração controlada e contrato, mas checkpoint público bloqueado; Fases 6 e Validação Final permanecem não iniciadas.
