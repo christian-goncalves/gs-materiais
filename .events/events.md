@@ -127,3 +127,27 @@ Este arquivo mantém o histórico cronológico de decisões, mudanças relevante
 - Contexto: a pasta `.git` existente não era um worktree utilizável e os materiais internos permaneciam locais.
 - Definição: o worktree local foi inicializado na branch principal, com exclusões para secrets, credenciais, `INFORMACAO.md` e artefatos gerados; nenhum conteúdo interno foi copiado para arquivos públicos.
 - Impacto: Fase 1, versionamento e validações de segurança subsequentes.
+
+## 2026-09-01 - Frontend e contrato local validados
+
+- Tipo: validação
+- Status: concluída
+- Contexto: a implementação da interface e da função server-side precisava de prova estrutural, funcional e de estados antes da integração Google.
+- Definição: build, suíte de validação/contrato, Chrome headless e responsividade passaram com fixtures sintéticos; o honeypot e o armazenamento foram mantidos isoláveis nos testes locais.
+- Impacto: checkpoints das Fases 2 e 3 aprovados; Fase 4 liberada.
+
+## 2026-09-01 - Fase 4 bloqueada por ambiente Google controlado
+
+- Tipo: risco
+- Status: bloqueada
+- Contexto: a conta de serviço geral lê a planilha informada e encontra a aba `formulario-encompasso`, mas a criação de uma planilha de validação foi recusada por falta de permissão; a tentativa alternativa de criação isolada foi recusada por quota de armazenamento do Drive.
+- Definição: nenhuma escrita foi feita na planilha de produção. OAuth e a credencial do n8n permanecem proibidos, e o checkpoint da Fase 4 não pode ser aprovado sem uma planilha controlada separada e disponível para leitura/escrita.
+- Impacto: Fases 5, 6 e Validação Final não foram iniciadas, conforme a condição de avanço do `PLANO.md`.
+
+## 2026-09-01 - Planilha controlada liberada e idempotência comprovada
+
+- Tipo: validação
+- Status: concluída
+- Contexto: uma nova planilha foi disponibilizada para substituir o ambiente de validação indisponível.
+- Definição: a conta de serviço geral configurou a aba `formulario-encompasso` com 17 cabeçalhos; fixture sintético criou uma linha, a repetição do UUID retornou 200 sem nova linha, a gravação literal/UTC foi validada, o acesso anônimo não retornou os dados e o registro sintético foi reconciliado.
+- Impacto: checkpoint da Fase 4 aprovado; Fase 5 liberada usando exclusivamente a planilha controlada.

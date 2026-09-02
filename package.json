@@ -1,0 +1,22 @@
+{
+  "name": "formulario-encompasso",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Formulário web mobile first do Encompasso Unificado",
+  "main": "api/submissions.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "build": "node scripts/build-check.js",
+    "test": "node --test",
+    "test:unit": "node --test test/*.test.js",
+    "test:browser": "node scripts/browser-check.js",
+    "test:sheets": "node scripts/sheets-integration.js"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
