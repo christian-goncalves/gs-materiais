@@ -9,6 +9,7 @@ const { spawn } = require("node:child_process");
 const root = path.resolve(__dirname, "..");
 const serverPort = 3317;
 const debugPort = 9333;
+const baseUrl = process.env.BASE_URL || "http://127.0.0.1:" + serverPort;
 
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
@@ -55,10 +56,10 @@ class CdpClient {
 }
 
 async function main() {
-  const server = spawn(process.execPath, [path.join(root, "scripts/dev-server.js")], { env: Object.assign({}, process.env, { PORT: String(serverPort) }), stdio: "ignore" });
-  await waitFor("http://127.0.0.1:" + serverPort, (body) => body.includes("Encompasso Unificado"));
+  const server = process.env.BASE_URL ? null : spawn(process.execPath, [path.join(root, "scripts/dev-server.js")], { env: Object.assign({}, process.env, { PORT: String(serverPort) }), stdio: "ignore" });
+  await waitFor(baseUrl, (body) => body.includes("Encompasso Unificado"));
   const chromeProfile = fs.mkdtempSync(path.join(os.tmpdir(), "formulario-encompasso-chrome-"));
-  const chrome = spawn("google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--remote-debugging-port=" + debugPort, "--user-data-dir=" + chromeProfile, "http://127.0.0.1:" + serverPort], { stdio: "ignore" });
+  const chrome = spawn("google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--remote-debugging-port=" + debugPort, "--user-data-dir=" + chromeProfile, baseUrl], { stdio: "ignore" });
   let cdp;
   try {
     const targets = JSON.parse(await waitFor("http://127.0.0.1:" + debugPort + "/json/list", (body) => body.includes("webSocketDebuggerUrl")));
@@ -67,8 +68,8 @@ async function main() {
     await cdp.connect();
     await cdp.send("Runtime.enable");
     await cdp.send("Page.enable");
-    await cdp.send("Page.navigate", { url: "http://127.0.0.1:" + serverPort });
-    await waitFor("http://127.0.0.1:" + serverPort, (body) => body.includes("Encompasso Unificado"));
+    await cdp.send("Page.navigate", { url: baseUrl });
+    await waitFor(baseUrl, (body) => body.includes("Encompasso Unificado"));
     await sleep(400);
     await cdp.evaluate("document.readyState");
 
@@ -136,7 +137,7 @@ async function main() {
   } finally {
     if (cdp) cdp.close();
     chrome.kill();
-    server.kill();
+    if (server) server.kill();
   }
 }
 

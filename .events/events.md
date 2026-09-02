@@ -175,3 +175,19 @@ Este arquivo mantém o histórico cronológico de decisões, mudanças relevante
 - Contexto: a planilha original foi confirmada como destino de produção e a branch `main` foi publicada no repositório GitHub vazio.
 - Definição: as seis variáveis server-side de produção foram cadastradas, a aba `formulario-encompasso` vazia recebeu somente os 17 cabeçalhos A–Q e nenhuma submissão de teste foi escrita na produção.
 - Impacto: gate de planilha, variáveis e GitHub da Fase 6 atendido; o acesso público continua condicionado à proteção SSO do projeto Vercel.
+
+## 2026-09-01 - Produção publicada com bloqueio de privacidade da planilha
+
+- Tipo: risco
+- Status: bloqueada
+- Contexto: a aplicação está publicada no alias de produção e a interface/endpoint foram verificados; a planilha correta ainda possui uma permissão `anyone` com papel de editor, confirmada por metadados do Drive, e sua exportação anônima responde com HTTP 200.
+- Definição: nenhum dado de teste foi escrito na produção. O conector disponível permite leitura e concessão de acesso, mas não revogação; não será feita tentativa indireta nem recriação de credenciais. A permissão pública precisa ser removida pelo proprietário ou por um conector com operação explícita de revogação.
+- Impacto: Fases 1–5 e a publicação técnica da Fase 6 estão comprovadas; a validação final e a aprovação de produção permanecem bloqueadas até a planilha ficar restrita.
+
+## 2026-09-01 - Rechecagem da permissão pública após ajuste
+
+- Tipo: validação
+- Status: bloqueada
+- Contexto: após o ajuste informado, os metadados do Drive mostram que a permissão `anyone` mudou de editor para leitor, mas continua existente; a exportação anônima ainda retorna HTTP 200 e os cabeçalhos do contrato.
+- Definição: a planilha ainda não atende ao requisito de acesso restrito. É necessário remover o acesso geral, mantendo apenas o proprietário e a conta de serviço autorizada para a aplicação.
+- Impacto: a validação final e a aprovação da Fase 6 continuam bloqueadas; nenhuma escrita de teste foi feita na produção.
