@@ -191,3 +191,11 @@ Este arquivo mantém o histórico cronológico de decisões, mudanças relevante
 - Contexto: após o ajuste informado, os metadados do Drive mostram que a permissão `anyone` mudou de editor para leitor, mas continua existente; a exportação anônima ainda retorna HTTP 200 e os cabeçalhos do contrato.
 - Definição: a planilha ainda não atende ao requisito de acesso restrito. É necessário remover o acesso geral, mantendo apenas o proprietário e a conta de serviço autorizada para a aplicação.
 - Impacto: a validação final e a aprovação da Fase 6 continuam bloqueadas; nenhuma escrita de teste foi feita na produção.
+
+## 2026-09-01 - Restrição da planilha de produção confirmada
+
+- Tipo: validação
+- Status: concluída
+- Contexto: após a alteração feita pelo proprietário, os metadados do Drive não exibem mais permissão `anyone`; permanece somente o proprietário, e a planilha deixa de ser compartilhada publicamente.
+- Definição: a exportação anônima foi revalidada e retornou HTTP 401, sem os cabeçalhos do contrato. Nenhuma escrita de teste foi feita na produção.
+- Impacto: o gate de privacidade da Fase 6 foi aprovado e a validação final pode ser encerrada.
