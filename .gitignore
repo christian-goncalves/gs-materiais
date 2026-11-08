@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 .vercel/
+Chaves/
+.playwright-mcp/
 
 # Dependencies and generated artifacts
 node_modules/

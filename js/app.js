@@ -1,71 +1,47 @@
 (function () {
   "use strict";
-
-  const validation = window.EncompassoValidation;
-  const form = document.getElementById("encompasso-form");
+  const validation = window.GSMateriaisValidation;
+  const form = document.getElementById("materiais-form");
   if (!validation || !form) return;
 
   const fieldNames = validation.DATA_FIELDS;
-  const documentType = document.getElementById("tipo_documento");
-  const documentInput = document.getElementById("documento");
-  const documentLabel = document.getElementById("documento-label");
-  const documentHint = document.getElementById("documento-hint");
   const summary = document.getElementById("form-summary");
   const status = document.getElementById("form-status");
   const button = document.getElementById("submit-button");
+  const cepStatus = document.getElementById("cep-status");
+  const cepInput = document.getElementById("cep");
+  const modal = document.getElementById("success-modal");
   let attemptId = null;
   let submitting = false;
+  let cepRequestVersion = 0;
+  const consultedCeps = new Set();
 
   function getField(name) { return document.getElementById(name); }
-
   function collectValues() {
     const values = {};
     for (const name of fieldNames) values[name] = getField(name).value;
     values.website = getField("website").value;
     return values;
   }
-
-  function updateDocumentMode() {
-    const isPassport = documentType.value === "passaporte";
-    documentLabel.firstChild.textContent = isPassport ? "Passaporte " : "CPF ";
-    documentHint.textContent = isPassport ? "Use de 5 a 30 letras e números, sem máscara." : "Informe 11 dígitos.";
-    documentInput.inputMode = isPassport ? "text" : "numeric";
-    documentInput.maxLength = isPassport ? 30 : 14;
-    documentInput.autocomplete = "off";
-    documentInput.placeholder = isPassport ? "Ex.: AB12345" : "000.000.000-00";
-    documentInput.setAttribute("aria-label", isPassport ? "Passaporte" : "CPF");
-  }
-
   function clearFieldError(name) {
     const field = getField(name);
     const error = document.getElementById(name + "-error");
     if (!field || !error) return;
     field.removeAttribute("aria-invalid");
-    field.removeAttribute("aria-errormessage");
-    const describedBy = (field.getAttribute("aria-describedby") || "").split(/\s+/).filter((id) => id && id !== name + "-error");
-    if (describedBy.length) field.setAttribute("aria-describedby", describedBy.join(" "));
-    else field.removeAttribute("aria-describedby");
     error.textContent = "";
   }
-
   function clearErrors() {
     for (const name of fieldNames) clearFieldError(name);
     summary.hidden = true;
     summary.textContent = "";
   }
-
   function renderErrors(errors, focusFirst) {
     clearErrors();
     const visibleErrors = fieldNames.filter((name) => errors[name]);
     for (const name of visibleErrors) {
       const field = getField(name);
-      const error = document.getElementById(name + "-error");
       field.setAttribute("aria-invalid", "true");
-      field.setAttribute("aria-errormessage", name + "-error");
-      const describedBy = (field.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
-      if (!describedBy.includes(name + "-error")) describedBy.push(name + "-error");
-      field.setAttribute("aria-describedby", describedBy.join(" "));
-      error.textContent = errors[name];
+      document.getElementById(name + "-error").textContent = errors[name];
     }
     if (visibleErrors.length > 1 || errors.form || errors.website) {
       summary.textContent = "Revise os campos destacados antes de enviar.";
@@ -73,49 +49,100 @@
     }
     if (focusFirst && visibleErrors.length) getField(visibleErrors[0]).focus();
   }
-
   function createAttemptId() {
     if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
-    return "00000000-0000-4000-8000-000000000000";
+    if (!window.crypto || typeof window.crypto.getRandomValues !== "function") throw new Error("uuid-unavailable");
+    const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("");
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }
-
   function setSubmitting(value) {
     submitting = value;
     button.disabled = value;
     button.setAttribute("aria-busy", String(value));
-    button.textContent = value ? "Enviando…" : "Enviar dados";
+    button.textContent = value ? "Enviando…" : "Enviar cadastro";
   }
-
   function setStatus(message, kind) {
     status.textContent = message;
     status.className = "form-status" + (kind ? " is-" + kind : "");
   }
-
   function handleInput(event) {
     const name = event.target.name;
     if (!fieldNames.includes(name)) return;
     clearFieldError(name);
-    if (name === "documento" && documentType.value === "cpf") event.target.value = validation.formatCpf(event.target.value);
+    if (name === "cpf") event.target.value = validation.formatCpf(event.target.value);
     if (name === "telefone") event.target.value = validation.formatPhone(event.target.value);
+    if (name === "uf") event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase();
+    if (name === "cep") {
+      const digits = event.target.value.replace(/\D/g, "").slice(0, 8);
+      if (event.target.value !== digits) event.target.value = digits;
+      const version = ++cepRequestVersion;
+      if (digits.length !== 8) {
+        cepStatus.textContent = "";
+      } else if (!consultedCeps.has(digits)) {
+        consultedCeps.add(digits);
+        lookupCep(digits, version);
+      }
+    }
   }
+  function handleValidationBlur(event) {
+    const name = event.target.name;
+    if (!['cpf', 'telefone', 'cep'].includes(name)) return;
 
-  function handleDocumentTypeChange() {
-    documentInput.value = "";
-    clearFieldError("documento");
-    updateDocumentMode();
+    const value = event.target.value.trim();
+    const digits = value.replace(/\D/g, "");
+    let message = "";
+
+    if (!digits) {
+      message = validation.REQUIRED_MESSAGE;
+    } else if (name === "cpf") {
+      if (digits.length !== 11) message = "CPF deve conter exatamente 11 dígitos.";
+      else if (!validation.isValidCpf(value)) message = "Informe um CPF válido.";
+    } else if (name === "telefone") {
+      if (!validation.normalizePhone(value)) message = "Informe telefone com DDD: 10 dígitos (fixo) ou 11 (celular). Com +55, acrescente 2 dígitos.";
+    } else if (name === "cep") {
+      if (!/^\d{8}$/.test(value)) message = "CEP deve conter exatamente 8 dígitos.";
+    }
+
+    const error = document.getElementById(name + "-error");
+    if (message) {
+      event.target.setAttribute("aria-invalid", "true");
+      error.textContent = message;
+    } else {
+      clearFieldError(name);
+    }
   }
-
+  async function lookupCep(cep, version) {
+    cepStatus.textContent = "Consultando CEP…";
+    try {
+      const response = await fetch("https://viacep.com.br/ws/" + encodeURIComponent(cep) + "/json/");
+      if (!response.ok) throw new Error("lookup-failed");
+      const data = await response.json();
+      if (version !== cepRequestVersion || cepInput.value !== cep) return;
+      if (!data || data.erro === true) {
+        cepStatus.textContent = "CEP não encontrado. Preencha o endereço manualmente.";
+        return;
+      }
+      const values = { logradouro: data.logradouro, bairro: data.bairro, cidade: data.localidade, uf: data.uf };
+      for (const [name, value] of Object.entries(values)) getField(name).value = typeof value === "string" ? value : "";
+      cepStatus.textContent = "Endereço preenchido. Você pode editar os campos.";
+    } catch (_) {
+      if (version === cepRequestVersion && cepInput.value === cep) cepStatus.textContent = "Não foi possível consultar o CEP. Preencha o endereço manualmente.";
+    }
+  }
   async function handleSubmit(event) {
     event.preventDefault();
     if (submitting) return;
     setStatus("", "");
     const values = collectValues();
     const result = validation.validateFormValues(values);
-    if (!result.ok) {
-      renderErrors(result.errors, true);
-      return;
+    if (!result.ok) { renderErrors(result.errors, true); return; }
+    if (!attemptId) {
+      try { attemptId = createAttemptId(); }
+      catch (_) { setStatus("Não foi possível preparar o envio. Tente novamente.", "error"); return; }
     }
-    if (!attemptId) attemptId = createAttemptId();
     const payload = Object.assign({ id_submissao: attemptId, website: values.website }, result.normalized);
     clearErrors();
     setSubmitting(true);
@@ -128,11 +155,8 @@
       let data = {};
       try { data = await response.json(); } catch (_) { data = {}; }
       if (response.status === 200 || response.status === 201) {
-        form.reset();
-        attemptId = null;
-        clearErrors();
-        updateDocumentMode();
-        setStatus("Dados enviados com sucesso.", "success");
+        setStatus("", "");
+        modal.showModal();
       } else if (response.status === 400 && data.errors) {
         renderErrors(data.errors, true);
         setStatus(data.message || "Revise os campos destacados antes de enviar.", "error");
@@ -148,15 +172,28 @@
     }
   }
 
+  document.getElementById("close-modal").addEventListener("click", () => modal.close());
+  modal.addEventListener("close", () => {
+    form.reset();
+    attemptId = null;
+    consultedCeps.clear();
+    cepRequestVersion += 1;
+    cepStatus.textContent = "";
+    clearErrors();
+    setStatus("", "");
+    getField("nome_completo").focus();
+  });
   form.addEventListener("input", handleInput);
-  documentType.addEventListener("change", handleDocumentTypeChange);
+  for (const name of ["cpf", "telefone", "cep"]) {
+    getField(name).addEventListener("blur", handleValidationBlur);
+  }
   form.addEventListener("submit", handleSubmit);
-  updateDocumentMode();
 
-  window.EncompassoApp = {
-    getAttemptId: function () { return attemptId; },
-    isSubmitting: function () { return submitting; },
-    collectValues: collectValues,
-    validate: validation.validateFormValues
+  window.GSMateriaisApp = {
+    getAttemptId: () => attemptId,
+    isSubmitting: () => submitting,
+    collectValues,
+    validate: validation.validateFormValues,
+    consultedCeps
   };
 })();

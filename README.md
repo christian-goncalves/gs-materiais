@@ -1,121 +1,38 @@
-# Encompasso Unificado
+# GS Materiais
 
-Formulário web mobile first para coleta de dados de identificação, contato e residência, com gravação segura em Google Sheets.
+Formulário público mobile first para cadastro de dados pessoais e endereço. O frontend usa HTML, CSS e JavaScript sem framework; a função `api/submissions.js` valida e grava os cadastros no Google Sheets.
 
-## Estado do projeto
+## Desenvolvimento local
 
-O projeto está na fase de especificação. Ainda não há aplicação implementada, dependências instaladas, configuração da Vercel ou ambiente local preparado.
+Use Node.js 20 ou superior e instale as dependências com `npm install`. Inicie a aplicação com:
 
-A próxima etapa deverá analisar a especificação consolidada e produzir um plano executivo de implementação. Esse plano será realizado separadamente e deverá conter fases, tarefas, dependências, checkpoints, validações e critérios de conclusão.
-
-## Objetivo
-
-Disponibilizar um formulário público chamado **Encompasso Unificado**, acessível pela URL da Vercel, que:
-
-- organize os campos em Identificação, Contato e Residência;
-- priorize a experiência em dispositivos móveis;
-- valide os dados no navegador e novamente no servidor;
-- não exponha credenciais ou detalhes internos ao navegador;
-- grave cada submissão válida em uma aba específica do Google Sheets;
-- evite duplicação da mesma tentativa de envio;
-- apresente respostas claras de sucesso e erro.
-
-## Arquitetura geral
-
-```text
-Navegador
-HTML + CSS + JavaScript
-        |
-        | HTTPS / JSON
-        | POST /api/submissions
-        v
-Vercel Function
-Node.js + validação server-side
-        |
-        | Conta de serviço
-        | Google Sheets API
-        v
-Google Sheets
-Aba formulario-encompasso
+```sh
+npm run dev
 ```
 
-O frontend será estático e não terá acesso às credenciais Google. Somente a função server-side poderá autenticar-se e gravar na planilha.
+Abra `http://localhost:3000` no navegador. O formulário pode ser explorado sem credenciais; o envio real requer configurar as variáveis server-side a partir de `.env.example` e usar uma planilha GS Materiais de validação autorizada.
 
-## Stack definida
+## Contrato e proteção
 
-- HTML5 sem framework de interface.
-- CSS3 com abordagem mobile first.
-- JavaScript puro no navegador.
-- Node.js em uma Vercel Function.
-- Cliente oficial `googleapis` para autenticação e Google Sheets API.
-- Google Sheets como destino dos registros.
-- GitHub para versionamento.
-- Vercel para hospedagem e processamento server-side.
+O formulário apresenta nome completo, CPF, telefone, CEP, logradouro, número, complemento, bairro, cidade e UF, nessa ordem. O ViaCEP recebe somente o CEP. O servidor valida os campos, aplica honeypot, limite de requisições e idempotência e grava valores literais nas 12 colunas A–L descritas em `ESPECIFICAÇÃO-GS-MATERIAIS.md`.
 
-Nenhum framework frontend, banco de dados ou serviço adicional faz parte do escopo atual.
+Credenciais Google permanecem no ambiente server-side: `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_SHEETS_SPREADSHEET_ID` e `GOOGLE_SHEETS_TAB_NAME`. Não configure o destino de validação com a planilha anterior.
 
-## Estrutura prevista
+## Verificações locais
 
-Esta estrutura descreve a implementação futura e não significa que os arquivos já existam:
-
-```text
-.
-|-- README.md
-|-- ESPECIFICAÇÃO.md
-|-- .events/
-|   `-- events.md
-|-- index.html
-|-- assets/
-|   `-- image.png
-|-- css/
-|   `-- styles.css
-|-- js/
-|   `-- app.js
-|-- api/
-|   `-- submissions.js
-|-- package.json
-|-- .env.example
-|-- .gitignore
-`-- vercel.json                 # somente se a configuração padrão não for suficiente
+```sh
+npm run build
+npm run test:unit
+npm test
+npm run test:browser
 ```
 
-## Configuração necessária
+O teste de integração Sheets requer `GS_MATERIAIS_VALIDATION_SPREADSHEET_ID`, `GOOGLE_SHEETS_TAB_NAME`, credenciais server-side e `GS_MATERIAIS_VALIDATION_SHEET=confirmed`. Como desenvolvimento e produção podem usar a mesma planilha, execute-o apenas depois de confirmar o destino: ele confere os cabeçalhos existentes, grava uma linha sintética com UUID, repete o envio para verificar idempotência, lê os dados e remove a linha criada. Não cria abas nem altera cabeçalhos. A configuração está detalhada no plano.
 
-A implementação utilizará variáveis server-side. Os nomes definidos são:
+## Documentação do projeto
 
-```text
-GOOGLE_SERVICE_ACCOUNT_EMAIL
-GOOGLE_PRIVATE_KEY
-GOOGLE_SHEETS_SPREADSHEET_ID
-GOOGLE_SHEETS_TAB_NAME
-RATE_LIMIT_MAX_REQUESTS
-RATE_LIMIT_WINDOW_SECONDS
-```
-
-`GOOGLE_SHEETS_TAB_NAME` deverá receber `formulario-encompasso`.
-
-Os valores reais deverão existir somente no ambiente local ignorado pelo Git e nas Environment Variables da Vercel. O futuro `.env.example` terá apenas placeholders.
-
-Antes da produção será necessário:
-
-1. habilitar a Google Sheets API no projeto Google utilizado;
-2. conceder à conta de serviço escolhida permissão de edição na planilha;
-3. restringir a planilha, removendo o acesso público;
-4. configurar as variáveis na Vercel;
-5. validar a gravação em ambiente controlado;
-6. remover com segurança os arquivos locais de credenciais quando não forem mais necessários.
-
-## Segurança
-
-- Credenciais Google nunca poderão ser enviadas ao navegador ou incluídas no Git.
-- A pasta local de credenciais e `INFORMACAO.md` são materiais internos e não devem ser versionados.
-- O backend não deverá registrar CPF, passaporte, telefone, endereço, payloads completos ou secrets em logs.
-- A planilha deverá permanecer restrita à conta proprietária, à conta de serviço e às pessoas administradoras necessárias.
-- A API aceitará somente requisições esperadas, validará novamente todos os campos e aplicará proteção contra automação e excesso de requisições.
-
-## Documentação interna
-
-- [ESPECIFICAÇÃO.md](ESPECIFICAÇÃO.md): fonte principal de verdade funcional e técnica.
-- [.events/events.md](.events/events.md): histórico cronológico de decisões e mudanças relevantes.
-
-Mudanças de requisito devem primeiro ser registradas em `.events/events.md` e refletidas na especificação vigente. A especificação não deve acumular histórico ou versões antigas no corpo principal.
+- [ESPECIFICAÇÃO-GS-MATERIAIS.md](ESPECIFICAÇÃO-GS-MATERIAIS.md): comportamento funcional e visual vigente.
+- [ESPECIFICAÇÃO.md](ESPECIFICAÇÃO.md): especificação original preservada e contratos reutilizados.
+- [PLANO-GS-MATERIAIS.md](PLANO-GS-MATERIAIS.md): fases, gates e validação.
+- [PROMPT-EXECUCAO-GS-MATERIAIS.md](PROMPT-EXECUCAO-GS-MATERIAIS.md): protocolo de execução contínua.
+- [.events/events.md](.events/events.md): decisões, descobertas e checkpoints.

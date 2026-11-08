@@ -10,6 +10,19 @@ const rateBuckets = new Map();
 const submissionLocks = new Map();
 let testStorageFactory = null;
 
+function formatSubmissionTimestamp(date) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date).map(({ type, value }) => [type, value]));
+  return `${parts.day}/${parts.month}/${parts.year} | ${parts.hour}:${parts.minute}`;
+}
+
 function json(res, status, body) {
   if (typeof res.status === "function" && typeof res.json === "function") return res.status(status).json(body);
   res.statusCode = status;
@@ -102,10 +115,10 @@ function quoteSheetName(name) {
 
 function createGoogleSheetsStorage() {
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-  const tabName = process.env.GOOGLE_SHEETS_TAB_NAME || "formulario-encompasso";
+  const tabName = process.env.GOOGLE_SHEETS_TAB_NAME;
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n");
-  if (!spreadsheetId || !email || !privateKey) throw new Error("storage-not-configured");
+  if (!spreadsheetId || !tabName || !email || !privateKey) throw new Error("storage-not-configured");
   const { google } = require("googleapis");
   const auth = new google.auth.GoogleAuth({
     credentials: { client_email: email, private_key: privateKey },
@@ -125,7 +138,7 @@ function createGoogleSheetsStorage() {
     async appendRow(row) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: tab + "!A:Q",
+        range: tab + "!A:L",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         includeValuesInResponse: false,
@@ -195,12 +208,9 @@ async function handler(req, res) {
       if (await storage.hasSubmission(payload.id_submissao)) return { created: false };
       const row = [
         payload.id_submissao,
-        new Date().toISOString(),
-        ...[
-          "nome_completo", "nome_social", "data_nascimento", "nacionalidade", "tipo_documento",
-          "documento", "telefone", "email", "pais", "estado_provincia", "municipio_cidade",
-          "logradouro_numero", "complemento", "bairro_distrito", "cep_codigo_postal"
-        ].map((field) => validation.normalized[field])
+        formatSubmissionTimestamp(new Date()),
+        ...["nome_completo", "cpf", "telefone", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf"]
+          .map((field) => validation.normalized[field])
       ];
       await storage.appendRow(row);
       return { created: true };
@@ -217,6 +227,7 @@ async function handler(req, res) {
 }
 
 handler.MAX_BODY_BYTES = MAX_BODY_BYTES;
+handler._formatSubmissionTimestamp = formatSubmissionTimestamp;
 handler._setStorageFactoryForTests = function (factory) { testStorageFactory = factory; };
 handler._resetForTests = function () { testStorageFactory = null; rateBuckets.clear(); submissionLocks.clear(); };
 handler._createGoogleSheetsStorage = createGoogleSheetsStorage;

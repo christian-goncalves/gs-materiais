@@ -10,49 +10,33 @@ function payload(overrides = {}) {
   return Object.assign({
     id_submissao: "11111111-1111-4111-8111-111111111111",
     nome_completo: "Amostra Sintética",
-    nome_social: "",
-    data_nascimento: "1990-01-01",
-    nacionalidade: "Brasileira",
-    tipo_documento: "cpf",
-    documento: "529.982.247-25",
+    cpf: "529.982.247-25",
     telefone: "(11) 99876-5432",
-    email: "fixture@example.invalid",
-    pais: "Brasil",
-    estado_provincia: "São Paulo",
-    municipio_cidade: "São Paulo",
-    logradouro_numero: "Rua Sintética, 123",
-    complemento: "=VALOR_SINTETICO",
-    bairro_distrito: "Centro",
-    cep_codigo_postal: "SW1A 1AA",
+    cep: "01001000",
+    logradouro: "Praça Sintética",
+    numero: "123",
+    complemento: "=TEXTO_SINTETICO",
+    bairro: "Centro",
+    cidade: "São Paulo",
+    uf: "sp",
     website: ""
   }, overrides);
 }
-
 function makeResponse() {
-  return {
-    statusCode: 200,
-    headers: {},
-    body: "",
-    setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
-    end(value = "") { this.body += value; this.done = true; },
-    json(value) { this.body = JSON.stringify(value); this.done = true; }
-  };
+  return { statusCode: 200, headers: {}, body: "", setHeader(name, value) { this.headers[name.toLowerCase()] = value; }, end(value = "") { this.body += value; }, json(value) { this.body = JSON.stringify(value); } };
 }
-
 function makeRequest(method, body, headers = {}, ip = "198.51.100.10") {
-  const request = Readable.from(body === undefined ? [] : [typeof body === "string" ? body : JSON.stringify(body)]);
-  request.method = method;
-  request.headers = Object.assign({ "content-type": "application/json", "x-forwarded-for": ip }, headers);
-  return request;
+  const req = Readable.from(body === undefined ? [] : [typeof body === "string" ? body : JSON.stringify(body)]);
+  req.method = method;
+  req.headers = Object.assign({ "content-type": "application/json", "x-forwarded-for": ip }, headers);
+  return req;
 }
-
 async function invoke(method = "POST", body = payload(), headers = {}, ip) {
   const req = makeRequest(method, body, headers, ip);
   const res = makeResponse();
   await handler(req, res);
   return { req, res, data: JSON.parse(res.body) };
 }
-
 function setupStore(options = {}) {
   const rows = [];
   const store = {
@@ -68,92 +52,86 @@ test.beforeEach(() => {
   process.env.RATE_LIMIT_MAX_REQUESTS = "5";
   process.env.RATE_LIMIT_WINDOW_SECONDS = "60";
 });
-
 test.after(() => {
   delete process.env.RATE_LIMIT_MAX_REQUESTS;
   delete process.env.RATE_LIMIT_WINDOW_SECONDS;
   handler._resetForTests();
 });
 
-test("cria uma linha sintética com 17 colunas e timestamp UTC server-side", async () => {
+test("grava 12 valores sintéticos na ordem A-L com data e hora brasileiras", async () => {
   const { rows } = setupStore();
   const result = await invoke();
   assert.equal(result.res.statusCode, 201);
-  assert.equal(result.data.code, "created");
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].length, 17);
+  assert.equal(rows[0].length, 12);
+  assert.deepEqual(rows[0].slice(2), ["Amostra Sintética", "52998224725", "+5511998765432", "01001000", "Praça Sintética", "123", "=TEXTO_SINTETICO", "Centro", "São Paulo", "SP"]);
   assert.equal(rows[0][0], payload().id_submissao);
-  assert.match(rows[0][1], /^\d{4}-\d{2}-\d{2}T.*Z$/);
-  assert.equal(rows[0][7], "52998224725");
-  assert.equal(rows[0][8], "+5511998765432");
-  assert.equal(rows[0][9], "fixture@example.invalid");
-  assert.equal(rows[0][14], "=VALOR_SINTETICO");
+  assert.match(rows[0][1], /^\d{2}\/\d{2}\/\d{4} \| \d{2}:\d{2}$/);
 });
 
-test("retorna 200 no mesmo UUID sem criar duplicidade", async () => {
+test("formata data_hora_envio no fuso de São Paulo", () => {
+  assert.equal(handler._formatSubmissionTimestamp(new Date("2026-11-08T12:34:00Z")), "08/11/2026 | 09:34");
+});
+
+test("retry do mesmo UUID retorna 200 e não duplica linha", async () => {
   const { rows } = setupStore();
-  const first = await invoke();
-  const second = await invoke();
-  assert.equal(first.res.statusCode, 201);
-  assert.equal(second.res.statusCode, 200);
-  assert.equal(second.data.code, "already_processed");
+  assert.equal((await invoke()).res.statusCode, 201);
+  const retry = await invoke();
+  assert.equal(retry.res.statusCode, 200);
+  assert.equal(retry.data.code, "already_processed");
   assert.equal(rows.length, 1);
 });
 
-test("bloqueia método, Content-Type, JSON inválido e honeypot antes do armazenamento", async () => {
+test("bloqueia método, tipo de conteúdo, JSON inválido, honeypot e payload antigo", async () => {
   const { rows } = setupStore();
   assert.equal((await invoke("GET", "not-read", { "content-type": "text/plain" })).res.statusCode, 405);
   assert.equal((await invoke("POST", payload(), { "content-type": "text/plain" }, "198.51.100.11")).res.statusCode, 415);
   assert.equal((await invoke("POST", "{broken", {}, "198.51.100.12")).res.statusCode, 400);
-  const honey = await invoke("POST", payload({ id_submissao: randomUUID(), website: "bot" }), {}, "198.51.100.13");
-  assert.equal(honey.res.statusCode, 400);
-  assert.equal(honey.data.code, "invalid_submission");
+  assert.equal((await invoke("POST", payload({ id_submissao: randomUUID(), website: "bot" }), {}, "198.51.100.13")).res.statusCode, 400);
+  const old = Object.assign(payload({ id_submissao: randomUUID() }), { email: "fixture@example.invalid", documento: "52998224725" });
+  const oldResult = await invoke("POST", old, {}, "198.51.100.14");
+  assert.equal(oldResult.res.statusCode, 400);
+  assert.equal(oldResult.data.code, "validation_error");
   assert.equal(rows.length, 0);
 });
 
-test("rejeita dados inválidos com erros por campo e não grava", async () => {
+test("rejeita campos inválidos e complemento acima de 50 caracteres sem gravar", async () => {
   const { rows } = setupStore();
-  const result = await invoke("POST", payload({ id_submissao: "bad", nome_completo: "", telefone: "123", email: "bad" }), {}, "198.51.100.14");
+  const result = await invoke("POST", payload({ nome_completo: "", cpf: "11111111111", telefone: "123", cep: "1234567" }), {}, "198.51.100.15");
   assert.equal(result.res.statusCode, 400);
-  assert.equal(result.data.code, "validation_error");
   assert.ok(result.data.errors.nome_completo);
+  assert.ok(result.data.errors.cpf);
   assert.ok(result.data.errors.telefone);
-  assert.ok(result.data.errors.email);
+  assert.ok(result.data.errors.cep);
+  const longComplement = await invoke("POST", payload({ id_submissao: randomUUID(), complemento: "x".repeat(51) }), {}, "198.51.100.16");
+  assert.equal(longComplement.res.statusCode, 400);
+  assert.ok(longComplement.data.errors.complemento);
   assert.equal(rows.length, 0);
 });
 
-test("rejeita corpo grande antes da camada de armazenamento", async () => {
+test("rejeita corpo grande e aplica rate limit 5 por 60 segundos", async () => {
   const { rows } = setupStore();
-  const result = await invoke("POST", payload(), { "content-length": String(handler.MAX_BODY_BYTES + 1) }, "198.51.100.15");
-  assert.equal(result.res.statusCode, 400);
-  assert.equal(result.data.code, "payload_too_large");
-  assert.equal(rows.length, 0);
-});
-
-test("aplica 5 requisições por janela e retorna 429 na seguinte", async () => {
-  setupStore();
-  for (let index = 0; index < 5; index += 1) {
-    const result = await invoke("POST", payload({ id_submissao: randomUUID() }), {}, "198.51.100.16");
-    assert.notEqual(result.res.statusCode, 429);
-  }
-  const limited = await invoke("POST", payload({ id_submissao: randomUUID() }), {}, "198.51.100.16");
+  const large = await invoke("POST", payload(), { "content-length": String(handler.MAX_BODY_BYTES + 1) }, "198.51.100.17");
+  assert.equal(large.res.statusCode, 400);
+  assert.equal(large.data.code, "payload_too_large");
+  for (let i = 0; i < 5; i += 1) assert.notEqual((await invoke("POST", payload({ id_submissao: randomUUID() }), {}, "198.51.100.18")).res.statusCode, 429);
+  const limited = await invoke("POST", payload({ id_submissao: randomUUID() }), {}, "198.51.100.18");
   assert.equal(limited.res.statusCode, 429);
   assert.equal(limited.data.code, "rate_limited");
+  assert.equal(rows.length, 5);
 });
 
-test("mapeia falha do armazenamento para 500 genérico e log sanitizado", async () => {
+test("falha de armazenamento retorna 500 genérico sem dados pessoais nos logs", async () => {
   setupStore({ failAppend: true });
   const originalError = console.error;
   const logs = [];
   console.error = (message) => logs.push(String(message));
   try {
-    const result = await invoke("POST", payload({ id_submissao: randomUUID() }), {}, "198.51.100.17");
+    const result = await invoke("POST", payload({ id_submissao: randomUUID() }));
     assert.equal(result.res.statusCode, 500);
     assert.equal(result.data.code, "internal_error");
-    assert.doesNotMatch(result.res.body, /synthetic|fixture|529|Rua|@/);
+    assert.doesNotMatch(result.res.body, /Amostra|529|Praça|synthetic|@/);
     assert.equal(logs.length, 1);
-    assert.doesNotMatch(logs[0], /synthetic|fixture|529|Rua|@/);
-  } finally {
-    console.error = originalError;
-  }
+    assert.doesNotMatch(logs[0], /Amostra|529|Praça|synthetic|@/);
+  } finally { console.error = originalError; }
 });

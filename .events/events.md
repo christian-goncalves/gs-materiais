@@ -199,3 +199,35 @@ Este arquivo mantém o histórico cronológico de decisões, mudanças relevante
 - Contexto: após a alteração feita pelo proprietário, os metadados do Drive não exibem mais permissão `anyone`; permanece somente o proprietário, e a planilha deixa de ser compartilhada publicamente.
 - Definição: a exportação anônima foi revalidada e retornou HTTP 401, sem os cabeçalhos do contrato. Nenhuma escrita de teste foi feita na produção.
 - Impacto: o gate de privacidade da Fase 6 foi aprovado e a validação final pode ser encerrada.
+
+## 2026-11-08 - Especificação separada para GS Materiais
+
+- Tipo: decisão
+- Status: aprovada
+- Contexto: o formulário simplificado reutiliza a integração Google Sheets e as proteções da aplicação existente, mas tem outro nome, conjunto de campos, visual e esquema de gravação.
+- Definição: preservar `ESPECIFICAÇÃO.md` como contrato original do Encompasso Unificado e registrar os requisitos de GS Materiais em `ESPECIFICAÇÃO-GS-MATERIAIS.md`.
+- Impacto: nova especificação, índice do README e implementação posterior do formulário e da consulta de CEP.
+
+## 2026-11-08 - Baseline GS Materiais aprovado
+
+- Tipo: descoberta
+- Status: concluída
+- Contexto: início da execução do plano GS Materiais no checkout existente.
+- Definição: Fase 1 aprovada. O código ainda implementa o formulário Encompasso, valida 15 campos de dados e grava 17 colunas; build e 13 testes unitários existentes passaram. Node.js 20 e dependências locais estão disponíveis. As variáveis Google não estão configuradas no ambiente.
+- Impacto: fases 2–4 devem substituir o contrato antigo sem alterar `ESPECIFICAÇÃO.md`; a integração real depende de uma nova planilha de validação. A imagem de referência verde citada pela especificação não está presente no checkout, então a aproximação visual não será tratada como cor oficial.
+
+## 2026-11-08 - Fases locais GS Materiais validadas
+
+- Tipo: validação
+- Status: concluída
+- Contexto: implementação das fases 2–4 conforme `PLANO-GS-MATERIAIS.md`.
+- Definição: interface de card único, dez campos, validação de CPF/telefone/CEP, ViaCEP com fallback e proteção contra respostas antigas, modal de confirmação, contrato server-side de 12 colunas A–L, idempotência, honeypot, rate limit e logs sanitizados foram implementados. Build, testes unitários, testes de API e navegador passaram com dados sintéticos. O responsável aprovou a aproximação de verde escuro porque a imagem citada não está disponível neste checkout; o valor de cor permanece documentado como aproximação.
+- Impacto: fases 2, 3 e 4 aprovadas em validações locais. A Fase 5 permanece bloqueada até haver identificador e nome da aba da nova planilha GS Materiais de validação, cabeçalhos A–L configurados, credenciais Google server-side e confirmação de que esse destino está autorizado. Nenhuma planilha foi consultada ou alterada.
+
+## 2026-11-08 - Integração GS Materiais bloqueada por destino ausente
+
+- Tipo: risco
+- Status: bloqueada
+- Contexto: as validações locais terminaram, mas os pré-requisitos para integração real não existem no ambiente.
+- Definição: não executar `npm run test:sheets` nem configurar destino alternativo. São necessários os IDs distintos da planilha de validação e da produção, autorização explícita para a validação, o nome exato da aba com cabeçalhos A–L, acesso de escrita para a conta de serviço e configuração segura das variáveis server-side. Uma consulta GET isolada do CEP sintético `01001000` ao ViaCEP retornou HTTP 200 e os quatro campos esperados; o pedido enviou somente o CEP. A Fase 6 não foi iniciada porque o gate da Fase 5 permanece bloqueado.
+- Impacto: nenhuma leitura ou escrita Google, publicação, push ou commit foi feita. A auditoria local de dependências relatou vulnerabilidades moderadas na árvore de dependências Google; o relatório de produção não encontrou correção disponível para `qs`, e indicou correção para `uuid`.
