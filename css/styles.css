@@ -50,6 +50,12 @@ input[aria-invalid="true"] { border-color: var(--danger); }
 .field-hint, .field-error, .form-status { margin: .35rem 0 0; font-size: .84rem; }
 .field-hint { color: var(--muted); }
 .field-error { min-height: 1.25rem; color: var(--danger); font-weight: 650; }
+.consent-field { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); column-gap: .65rem; align-items: start; padding: .35rem 0; color: var(--white); }
+.consent-field input { width: 1.2rem; height: 1.2rem; min-height: 1.2rem; margin: .15rem 0 0; accent-color: var(--yellow); }
+.consent-field input:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+.consent-field label { margin: 0; color: var(--white); font-size: .9rem; font-weight: 500; }
+.consent-hint { grid-column: 2; margin: .35rem 0 0; color: var(--white); font-size: .82rem; }
+.consent-error { grid-column: 2; min-height: 1.1rem; margin: .2rem 0 0; color: #fff; font-size: .82rem; font-weight: 700; }
 .form-summary { padding: .85rem 1rem; border-left: 5px solid var(--danger); border-radius: .5rem; color: var(--ink); background: var(--white); font-weight: 700; }
 .form-actions { display: grid; gap: .65rem; margin-top: .25rem; }
 button { width: 100%; min-height: 3.25rem; padding: .8rem 1.25rem; border: 2px solid var(--yellow); border-radius: .7rem; color: #18342d; background: var(--yellow); cursor: pointer; font-weight: 850; transition: transform 140ms ease, filter 140ms ease; }

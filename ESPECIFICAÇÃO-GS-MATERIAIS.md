@@ -23,7 +23,7 @@ O repositório já contém HTML, CSS, JavaScript no navegador e uma função ser
 |---|---|---|
 | Interface | HTML, CSS e JavaScript sem framework; layout mobile first; rótulos visíveis e erros acessíveis | Um card com menos campos e a identidade visual aprovada |
 | Validação | Validação imediata no navegador e validação autoritativa no servidor | Aplicar regras apenas a nome completo, CPF, telefone, CEP e endereço |
-| Persistência | Vercel Function, Google Sheets API, conta de serviço server-side e valores literais | Escrever o novo esquema de 12 colunas definido na seção 8 |
+| Persistência | Vercel Function, Google Sheets API, conta de serviço server-side e valores literais | Escrever o novo esquema de 13 colunas definido na seção 8 |
 | Reenvio | UUID por submissão e verificação de idempotência | Manter o mesmo UUID em uma nova tentativa após falha |
 | Proteção | Honeypot, limite de requisições no envio e logs sem dados pessoais | Manter essas proteções no envio e consultar CEP somente sob demanda |
 | Falhas | Mensagem genérica, preservação dos dados e nova tentativa | Usar modal somente após confirmação de sucesso |
@@ -39,6 +39,7 @@ As regras antigas sobre nome social, nascimento, nacionalidade, tipo de document
 - Um card com o título **“Dados pessoais”**.
 - Campos obrigatórios de nome completo, CPF, telefone, CEP e endereço.
 - Consulta de CEP e preenchimento dos campos de endereço retornados pelo serviço.
+- Checkbox obrigatório de autorização para o tratamento dos dados com finalidade restrita à Ficha Branca, registrado no Sheets.
 - Edição manual dos campos de endereço preenchidos automaticamente.
 - Confirmação de sucesso em modal, seguida da limpeza do formulário quando o modal for fechado.
 - Gravação server-side em uma planilha Google Sheets configurada por variáveis de ambiente.
@@ -48,7 +49,7 @@ As regras antigas sobre nome social, nascimento, nacionalidade, tipo de document
 - Cards separados ou etapas de formulário.
 - Nome social, data de nascimento, nacionalidade, passaporte, e-mail e país.
 - Login, painel administrativo, edição ou exclusão de registros.
-- Upload, CAPTCHA visível ou coleta adicional de consentimento.
+- Upload ou CAPTCHA visível.
 - Consulta em massa de CEPs ou preenchimento de dados que o serviço de CEP não retorna.
 - Criação da nova planilha Google Sheets nesta refatoração.
 - Publicação ou alteração de domínio da aplicação.
@@ -83,6 +84,10 @@ Todos os campos abaixo são obrigatórios, exceto **Complemento**. A ordem da li
 O campo CEP vem antes dos campos de endereço. Ao completar os oito dígitos, a interface inicia a consulta. Os campos Logradouro, Bairro, Cidade e UF recebem os valores retornados e continuam editáveis. Número e Complemento permanecem para preenchimento manual.
 
 O usuário pode digitar CEP somente com números. O campo não aceita letras, espaços ou pontuação e limita a entrada a oito dígitos. A interface não acrescenta hífen ao valor armazenado.
+
+### 5.1 Autorização para tratamento de dados
+
+Antes do botão de envio, a interface apresenta um checkbox desmarcado por padrão com o texto: **“Autorizo o tratamento dos dados pessoais que informei para viabilizar o envio e o processamento da Ficha Branca. Esta autorização se limita a essa finalidade; outros usos dependerão de outra base legal prevista na LGPD e de informação prévia.”** e informa: **“Para enviar este formulário, é necessário autorizar esse tratamento.”**. A submissão só pode ser enviada quando marcado. O servidor também exige a autorização e grava `TRUE` na coluna M. Tentativas sem autorização não são enviadas nem armazenadas.
 
 ## 6. Validação e consulta de CEP
 
@@ -152,8 +157,9 @@ A aba de destino deverá ter a primeira linha com os cabeçalhos abaixo, nesta o
 | J | `bairro` |
 | K | `cidade` |
 | L | `uf` |
+| M | `autorizacao_dados_ficha_branca` |
 
-O backend gera `data_hora_envio` no fuso `America/Sao_Paulo`, no formato `DD/MM/AAAA | HH:MM` (por exemplo, `08/11/2026 | 09:34`). A linha é gravada como valores literais. O honeypot não integra o esquema da planilha.
+O backend gera `data_hora_envio` no fuso `America/Sao_Paulo`, no formato `DD/MM/AAAA | HH:MM` (por exemplo, `08/11/2026 | 09:34`). A coluna M registra `TRUE` nas submissões aceitas. Como a autorização é obrigatória, uma submissão com valor `FALSE` não é gravada. A linha é gravada como valores literais. O honeypot não integra o esquema da planilha.
 
 O navegador cria um UUID para cada tentativa de submissão. Em uma nova tentativa do mesmo envio, reutiliza o UUID. Antes de inserir uma linha, o backend procura esse identificador. Uma tentativa já registrada retorna sucesso sem inserir uma segunda linha.
 
@@ -222,7 +228,8 @@ A implementação atende a esta especificação quando:
 - a consulta preenche logradouro, bairro, cidade e UF sem sobrescrever uma resposta mais recente;
 - CEP inexistente e falha de rede permitem preenchimento manual do endereço e preservam os valores já digitados;
 - CPF inválido, telefone inválido ou campos obrigatórios vazios impedem a gravação no navegador e no servidor;
-- uma submissão aceita grava os 12 valores na ordem da seção 8;
+- uma submissão sem autorização é recusada pelo navegador e pelo servidor;
+- uma submissão aceita grava os 13 valores na ordem da seção 8, com `TRUE` na coluna M;
 - repetir o mesmo UUID não cria outra linha;
 - o modal de sucesso aparece somente após resposta HTTP 200 ou 201;
 - fechar o modal limpa os campos, enquanto falhas preservam os dados e o UUID;

@@ -95,13 +95,15 @@
 
   function validateSubmission(input) {
     if (!isPlainObject(input)) return { ok: false, errors: { form: "Dados inválidos." } };
-    const allowed = new Set(["id_submissao", "website", ...DATA_FIELDS]);
+    const allowed = new Set(["id_submissao", "website", "autorizacao_dados_ficha_branca", ...DATA_FIELDS]);
     const errors = {};
     for (const key of Object.keys(input)) if (!allowed.has(key)) errors.form = "Contrato de envio inválido.";
+    if (input.autorizacao_dados_ficha_branca !== true) errors.autorizacao_dados_ficha_branca = "Autorize o uso dos dados para enviar a Ficha Branca.";
     if (!isValidUuid(input.id_submissao)) errors.id_submissao = "Identificação da submissão inválida.";
     if (typeof input.website !== "string" || input.website.trim() !== "") errors.website = "Não foi possível processar o envio.";
     const result = validateFormValues(input);
     Object.assign(errors, result.errors);
+    result.normalized.autorizacao_dados_ficha_branca = input.autorizacao_dados_ficha_branca === true;
     return { ok: Object.keys(errors).length === 0, errors, normalized: result.normalized };
   }
 

@@ -76,6 +76,13 @@
           </div>
         </section>
 
+        <div class="consent-field">
+          <input id="autorizacao-dados" name="autorizacao_dados_ficha_branca" type="checkbox" required aria-describedby="autorizacao-dados-error">
+          <label for="autorizacao-dados">Autorizo o tratamento dos dados pessoais que informei para viabilizar o envio e o processamento da Ficha Branca. Esta autorização se limita a essa finalidade; outros usos dependerão de outra base legal prevista na LGPD e de informação prévia.</label>
+          <p class="consent-hint">Para enviar este formulário, é necessário autorizar esse tratamento.</p>
+          <p id="autorizacao-dados-error" class="consent-error" aria-live="polite"></p>
+        </div>
+
         <div class="form-actions">
           <button id="submit-button" type="submit">Enviar cadastro</button>
           <p id="form-status" class="form-status" role="status" aria-live="polite"></p>

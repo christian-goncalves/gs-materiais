@@ -19,7 +19,8 @@ function payload(overrides = {}) {
     bairro: "Centro",
     cidade: "São Paulo",
     uf: "sp",
-    website: ""
+    website: "",
+    autorizacao_dados_ficha_branca: true
   }, overrides);
 }
 function makeResponse() {
@@ -58,13 +59,14 @@ test.after(() => {
   handler._resetForTests();
 });
 
-test("grava 12 valores sintéticos na ordem A-L com data e hora brasileiras", async () => {
+test("grava 13 valores sintéticos na ordem A-M com data e hora brasileiras", async () => {
   const { rows } = setupStore();
   const result = await invoke();
   assert.equal(result.res.statusCode, 201);
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].length, 12);
+  assert.equal(rows[0].length, 13);
   assert.deepEqual(rows[0].slice(2), ["Amostra Sintética", "52998224725", "+5511998765432", "01001000", "Praça Sintética", "123", "=TEXTO_SINTETICO", "Centro", "São Paulo", "SP"]);
+  assert.equal(rows[0][12], "TRUE");
   assert.equal(rows[0][0], payload().id_submissao);
   assert.match(rows[0][1], /^\d{2}\/\d{2}\/\d{4} \| \d{2}:\d{2}$/);
 });

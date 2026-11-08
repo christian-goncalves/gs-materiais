@@ -138,7 +138,7 @@ function createGoogleSheetsStorage() {
     async appendRow(row) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: tab + "!A:L",
+        range: tab + "!A:M",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         includeValuesInResponse: false,
@@ -210,7 +210,8 @@ async function handler(req, res) {
         payload.id_submissao,
         formatSubmissionTimestamp(new Date()),
         ...["nome_completo", "cpf", "telefone", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf"]
-          .map((field) => validation.normalized[field])
+          .map((field) => validation.normalized[field]),
+        validation.normalized.autorizacao_dados_ficha_branca ? "TRUE" : "FALSE"
       ];
       await storage.appendRow(row);
       return { created: true };

@@ -62,9 +62,10 @@ async function main() {
     const structure = await cdp.evaluate(`JSON.stringify({
       title: document.querySelector('h1')?.textContent.trim(), intro: document.querySelector('.intro')?.textContent.trim(),
       cards: document.querySelectorAll('.form-card').length,
-      fields: [...document.querySelectorAll('input[name]')].filter((field) => field.name !== 'website').map((field) => field.name),
-      required: [...document.querySelectorAll('input[name]')].filter((field) => field.name !== 'website' && field.required).map((field) => field.name),
-      accessibleFields: [...document.querySelectorAll('input[name]')].filter((field) => field.name !== 'website').every((field) => field.labels.length === 1 && field.getAttribute('aria-describedby')?.includes(field.name+'-error')),
+      fields: [...document.querySelectorAll('input[name]')].filter((field) => field.name !== 'website' && field.type !== 'checkbox').map((field) => field.name),
+      required: [...document.querySelectorAll('input[name]')].filter((field) => field.name !== 'website' && field.type !== 'checkbox' && field.required).map((field) => field.name),
+      consent: { text: document.querySelector('label[for="autorizacao-dados"]')?.textContent.trim(), required: document.querySelector('#autorizacao-dados')?.required, position: document.querySelector('#autorizacao-dados').compareDocumentPosition(document.querySelector('#submit-button')) & Node.DOCUMENT_POSITION_FOLLOWING },
+      accessibleFields: [...document.querySelectorAll('input[name]')].filter((field) => field.name !== 'website').every((field) => field.labels.length === 1 && (field.type === 'checkbox' ? field.getAttribute('aria-describedby') === 'autorizacao-dados-error' : field.getAttribute('aria-describedby')?.includes(field.name+'-error'))),
       heading: document.querySelector('.form-card h2')?.textContent.trim(), oldContent: /Encompasso|Passaporte|E-mail/.test(document.body.innerText),
       maxComplement: document.querySelector('#complemento').maxLength, scrollWidth: document.documentElement.scrollWidth, viewport: innerWidth,
       tabOrder: [...document.querySelectorAll('input[name]')].filter((field) => field.name !== 'website').map((field) => field.name)
@@ -76,6 +77,8 @@ async function main() {
     assert.equal(parsedStructure.heading, "Dados pessoais");
     assert.deepEqual(parsedStructure.fields, ["nome_completo", "cpf", "telefone", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf"]);
     assert.deepEqual(parsedStructure.required, ["nome_completo", "cpf", "telefone", "cep", "logradouro", "numero", "bairro", "cidade", "uf"]);
+    assert.equal(parsedStructure.consent.required, true);
+    assert.equal(parsedStructure.consent.position, 4);
     assert.equal(parsedStructure.accessibleFields, true);
     assert.equal(parsedStructure.maxComplement, 50);
     assert.equal(parsedStructure.oldContent, false);
@@ -135,6 +138,7 @@ async function main() {
       const form=document.querySelector('#materiais-form'); const modal=document.querySelector('#success-modal'); const calls=[];
       const values={nome_completo:'Amostra Sintética',cpf:'52998224725',telefone:'11998765432',cep:'01001000',logradouro:'Praça Sintética',numero:'123',complemento:'',bairro:'Centro',cidade:'São Paulo',uf:'SP'};
       for(const [name,value] of Object.entries(values)){const field=document.querySelector('[name="'+name+'"]');field.value=value;field.dispatchEvent(new Event('input',{bubbles:true}));}
+      document.querySelector('#autorizacao-dados').checked=true;
       document.querySelector('#cep-status').textContent='';
       const responses=[new Error('network'),{status:400,body:{message:'Revise os campos.',errors:{cpf:'CPF inválido.'}}},{status:429,body:{message:'Limite.'}},{status:500,body:{}}];
       window.fetch=async (url,options)=>{calls.push({url,options});const next=responses.shift();if(next instanceof Error)throw next;return new Response(JSON.stringify(next.body),{status:next.status,headers:{'Content-Type':'application/json'}})};
@@ -145,8 +149,9 @@ async function main() {
       window.fetch=async (url,options)=>{calls.push({url,options});return new Response(JSON.stringify({ok:true}),{status:201,headers:{'Content-Type':'application/json'}})};
       form.requestSubmit(); await new Promise(r=>setTimeout(r,20)); const success={open:modal.open,id:window.GSMateriaisApp.getAttemptId(),name:document.querySelector('#nome_completo').value,focus:document.activeElement.id};
       document.querySelector('#close-modal').click(); await new Promise(r=>setTimeout(r,20));
-      const closed={open:modal.open,id:window.GSMateriaisApp.getAttemptId(),empty:[...document.querySelectorAll('input[name]')].filter(x=>x.name!=='website').every(x=>x.value===''),focus:document.activeElement.id};
+      const closed={open:modal.open,id:window.GSMateriaisApp.getAttemptId(),empty:[...document.querySelectorAll('input[name]')].filter(x=>x.name!=='website').every(x=>x.type==='checkbox'?!x.checked:x.value===''),focus:document.activeElement.id};
       const secondValues={...values,cep:'01001000'};for(const [name,value] of Object.entries(secondValues)){const field=document.querySelector('[name="'+name+'"]');field.value=value;field.dispatchEvent(new Event('input',{bubbles:true}));}
+      document.querySelector('#autorizacao-dados').checked=true;
       window.fetch=async()=>new Response(JSON.stringify({ok:true}),{status:200,headers:{'Content-Type':'application/json'}});
       form.requestSubmit(); await new Promise(r=>setTimeout(r,20)); const duplicate={open:modal.open};
       return {network,after400,after429,after500,success,closed,duplicate,requestBodies:calls.filter(c=>c.url==='/api/submissions').map(c=>JSON.parse(c.options.body))};
@@ -161,7 +166,8 @@ async function main() {
     assert.equal(flow.closed.open, false); assert.equal(flow.closed.id, null); assert.equal(flow.closed.empty, true); assert.equal(flow.closed.focus, "nome_completo");
     assert.equal(flow.duplicate.open, true);
     assert.ok(flow.requestBodies.every((body) => body.id_submissao === flow.network.id));
-    assert.deepEqual(Object.keys(flow.requestBodies[0]).sort(), ["bairro","cep","cidade","complemento","cpf","id_submissao","logradouro","nome_completo","numero","telefone","uf","website"].sort());
+    assert.deepEqual(Object.keys(flow.requestBodies[0]).sort(), ["autorizacao_dados_ficha_branca","bairro","cep","cidade","complemento","cpf","id_submissao","logradouro","nome_completo","numero","telefone","uf","website"].sort());
+    assert.ok(flow.requestBodies.every((body) => body.autorizacao_dados_ficha_branca === true));
     await cdp.evaluate("document.querySelector('#close-modal').click()");
 
     const responsive = [];

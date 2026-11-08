@@ -6,7 +6,7 @@ const { randomUUID } = require("node:crypto");
 const { google } = require("googleapis");
 const handler = require("../api/submissions.js");
 
-const HEADERS = ["id_submissao", "data_hora_envio", "nome_completo", "cpf", "telefone", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf"];
+const HEADERS = ["id_submissao", "data_hora_envio", "nome_completo", "cpf", "telefone", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf", "autorizacao_dados_ficha_branca"];
 const spreadsheetId = process.env.GS_MATERIAIS_VALIDATION_SPREADSHEET_ID;
 const tabName = process.env.GOOGLE_SHEETS_TAB_NAME;
 const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -27,7 +27,7 @@ async function invoke(body) {
   return { status: response.statusCode, data: JSON.parse(response.body) };
 }
 async function readRows(sheets) {
-  const result = await sheets.spreadsheets.values.get({ spreadsheetId, range: quotedTab() + "!A:L", majorDimension: "ROWS" });
+  const result = await sheets.spreadsheets.values.get({ spreadsheetId, range: quotedTab() + "!A:M", majorDimension: "ROWS" });
   return result.data.values || [];
 }
 async function removeSyntheticRow(sheets, sheetId, id) {
@@ -54,7 +54,7 @@ async function main() {
   const fixture = {
     id_submissao: id, nome_completo: "Amostra Sintética", cpf: "529.982.247-25", telefone: "(11) 99876-5432",
     cep: "01001000", logradouro: "Praça Sintética", numero: "123", complemento: "=TEXTO_SINTETICO",
-    bairro: "Centro", cidade: "São Paulo", uf: "sp", website: ""
+    bairro: "Centro", cidade: "São Paulo", uf: "sp", website: "", autorizacao_dados_ficha_branca: true
   };
   process.env.RATE_LIMIT_MAX_REQUESTS = "5";
   process.env.RATE_LIMIT_WINDOW_SECONDS = "60";
@@ -82,7 +82,7 @@ async function main() {
       formulaLikeTextStoredLiterally: literal, cleanup, rowsAfterCleanup: afterCleanup.length
     };
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), { mode: 0o600 });
-    if (created.status !== 201 || retry.status !== 200 || afterRetry.length !== afterCreate.length || row?.length !== 12 || !report.timestampIsBrazilian || !literal || !cleanup) throw new Error("sheets-integration-assertion-failed");
+    if (created.status !== 201 || retry.status !== 200 || afterRetry.length !== afterCreate.length || row?.length !== 13 || row?.[12] !== "TRUE" || !report.timestampIsBrazilian || !literal || !cleanup) throw new Error("sheets-integration-assertion-failed");
     console.log("sheets-integration: passed");
     console.log(JSON.stringify({ headerCount: report.headerCount, createdStatus: report.createdStatus, retryStatus: report.retryStatus, storedRowLength: report.storedRowLength, cleanup: report.cleanup }));
   } catch (error) {

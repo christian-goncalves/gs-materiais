@@ -10,6 +10,8 @@
   const button = document.getElementById("submit-button");
   const cepStatus = document.getElementById("cep-status");
   const cepInput = document.getElementById("cep");
+  const consentInput = document.getElementById("autorizacao-dados");
+  const consentError = document.getElementById("autorizacao-dados-error");
   const modal = document.getElementById("success-modal");
   let attemptId = null;
   let submitting = false;
@@ -21,6 +23,7 @@
     const values = {};
     for (const name of fieldNames) values[name] = getField(name).value;
     values.website = getField("website").value;
+    values.autorizacao_dados_ficha_branca = consentInput.checked;
     return values;
   }
   function clearFieldError(name) {
@@ -34,9 +37,15 @@
     for (const name of fieldNames) clearFieldError(name);
     summary.hidden = true;
     summary.textContent = "";
+    consentError.textContent = "";
+    consentInput.removeAttribute("aria-invalid");
   }
   function renderErrors(errors, focusFirst) {
     clearErrors();
+    if (errors.autorizacao_dados_ficha_branca) {
+      consentError.textContent = errors.autorizacao_dados_ficha_branca;
+      consentInput.setAttribute("aria-invalid", "true");
+    }
     const visibleErrors = fieldNames.filter((name) => errors[name]);
     for (const name of visibleErrors) {
       const field = getField(name);
@@ -48,6 +57,7 @@
       summary.hidden = false;
     }
     if (focusFirst && visibleErrors.length) getField(visibleErrors[0]).focus();
+    else if (focusFirst && errors.autorizacao_dados_ficha_branca) consentInput.focus();
   }
   function createAttemptId() {
     if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
@@ -139,11 +149,17 @@
     const values = collectValues();
     const result = validation.validateFormValues(values);
     if (!result.ok) { renderErrors(result.errors, true); return; }
+    if (!values.autorizacao_dados_ficha_branca) {
+      renderErrors({ autorizacao_dados_ficha_branca: "Autorize o uso dos dados para enviar a Ficha Branca." }, true);
+      return;
+    }
     if (!attemptId) {
       try { attemptId = createAttemptId(); }
       catch (_) { setStatus("Não foi possível preparar o envio. Tente novamente.", "error"); return; }
     }
-    const payload = Object.assign({ id_submissao: attemptId, website: values.website }, result.normalized);
+    const payload = Object.assign({ id_submissao: attemptId, website: values.website }, result.normalized, {
+      autorizacao_dados_ficha_branca: values.autorizacao_dados_ficha_branca
+    });
     clearErrors();
     setSubmitting(true);
     try {
@@ -184,6 +200,10 @@
     getField("nome_completo").focus();
   });
   form.addEventListener("input", handleInput);
+  consentInput.addEventListener("change", () => {
+    consentError.textContent = "";
+    consentInput.removeAttribute("aria-invalid");
+  });
   for (const name of ["cpf", "telefone", "cep"]) {
     getField(name).addEventListener("blur", handleValidationBlur);
   }

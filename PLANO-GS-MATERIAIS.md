@@ -146,7 +146,7 @@ CPF, telefone e CEP são validados antes do envio. Ao completar oito dígitos do
 
 **Objetivo**
 
-Alinhar a validação autoritativa, o endpoint e a gravação ao novo contrato de 12 colunas, mantendo as proteções reutilizáveis da aplicação.
+Alinhar a validação autoritativa, o endpoint e a gravação ao novo contrato de 13 colunas, incluindo o registro da autorização, mantendo as proteções reutilizáveis da aplicação.
 
 **Estado esperado**
 
@@ -181,12 +181,12 @@ O endpoint aceita somente o novo conjunto de campos, valida e normaliza os dados
 - `npm run test:unit` cobrindo validação e contrato HTTP.
 - Testes HTTP para 201, 200 idempotente, 400, 405, 415, 429 e 500.
 - Teste de honeypot acionado e de limite configurado sem expor dados pessoais em logs.
-- Teste de serialização para confirmar exatamente 12 valores, ordem A–L, timestamp brasileiro e ausência de fórmulas.
+- Teste de serialização para confirmar exatamente 13 valores, ordem A–M, timestamp brasileiro, autorização afirmativa e ausência de fórmulas.
 - Inspeção de logs e respostas para confirmar que CPF, telefone, endereço, credenciais e payload bruto não são expostos.
 
 **Critérios e checkpoint**
 
-`APROVADO` quando testes server-side demonstrarem validação equivalente, rejeição do contrato antigo, idempotência e linha de 12 colunas correta. A fase de integração externa permanece bloqueada até existir planilha de validação separada, com cabeçalhos corretos e acesso configurado.
+`APROVADO` quando testes server-side demonstrarem validação equivalente, rejeição do contrato antigo, idempotência e linha de 13 colunas correta. A fase de integração externa permanece bloqueada até existir planilha de validação separada, com cabeçalhos corretos e acesso configurado.
 
 ### Fase 5 — Integração ponta a ponta e validação de qualidade
 
@@ -201,7 +201,7 @@ Os fluxos de sucesso, duplicidade, falha e preenchimento manual estão demonstra
 **Dependências e pré-condições**
 
 - Fases 1 a 4 aprovadas.
-- Planilha de validação fornecida e distinguível da planilha de produção, aba com os 12 cabeçalhos na ordem definida e permissão de escrita configurada.
+- Planilha de validação fornecida e distinguível da planilha de produção, aba com os 13 cabeçalhos na ordem definida e permissão de escrita configurada.
 - Variáveis locais/server-side disponíveis sem divulgar seus valores.
 
 **Tarefas concretas**
@@ -225,7 +225,7 @@ Os fluxos de sucesso, duplicidade, falha e preenchimento manual estão demonstra
 - `npm test`
 - `npm run test:browser`
 - `npm run test:sheets`, somente depois de confirmar que seu destino é a planilha de validação controlada.
-- Comparar a linha escrita com as 12 colunas da especificação e confirmar contagem antes/depois para idempotência.
+- Comparar a linha escrita com as 13 colunas da especificação, incluindo a autorização afirmativa, e confirmar contagem antes/depois para idempotência.
 - Conferir que o checkout e a aplicação continuam sem rolagem horizontal e sem erros de console nos viewports testados.
 
 **Critérios e checkpoint**
@@ -286,7 +286,7 @@ A conclusão da refatoração depende dos critérios de aceitação da seção 1
 - CPF, telefone e CEP são validados no cliente e no servidor; CEP aceita somente oito dígitos.
 - A consulta ViaCEP envia somente o CEP, preenche os campos corretos, mantém edição e permite preenchimento manual em falhas.
 - Modal aparece somente após sucesso confirmado; ao fechar limpa os dados e o UUID; falhas preservam ambos.
-- A planilha controlada recebe os 12 valores na ordem definida, como valores literais; retry do UUID não duplica a linha.
+- A planilha controlada recebe os 13 valores na ordem definida, como valores literais; a autorização fica registrada como `TRUE` e retry do UUID não duplica a linha.
 - Honeypot, rate limit, idempotência, credenciais server-side e logs sem dados pessoais permanecem ativos.
 - Testes, ambiente, limitações e autorização de publicação estão descritos sem extrapolar a evidência.
 
@@ -302,7 +302,7 @@ O resultado final deve ser classificado como `CONCLUÍDO`, `PRONTO PARA REVISÃO
 | §§ 6.1–6.3: nome, CPF e telefone | 3–4 | Fixtures no navegador e endpoint, valores normalizados |
 | §§ 6.4–6.5: CEP, ViaCEP e endereço manual | 3 e 5 | Casos de sucesso, erro, resposta atrasada e edição manual |
 | § 7: envio, UUID, modal, retry e limpeza | 3 e 5 | HTTP 200/201 e falhas, estado antes/depois e idempotência |
-| § 8: cabeçalhos e gravação em 12 colunas | 4–5 | Comparação posicional A–L na planilha controlada |
+| § 8: cabeçalhos e gravação em 13 colunas | 4–5 | Comparação posicional A–M na planilha controlada |
 | § 9: contratos HTTP e ViaCEP | 3–5 | Matriz de status e inspeção da requisição de CEP |
 | § 10: segurança e privacidade | 1, 4–6 | Inspeção de secrets, payloads, logs, rate limit e destino |
 | § 11: acessibilidade e responsividade | 2 e 5 | Teclado, foco, anúncios, contraste e viewports |

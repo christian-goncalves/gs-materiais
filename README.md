@@ -14,7 +14,7 @@ Abra `http://localhost:3000` no navegador. O formulário pode ser explorado sem 
 
 ## Contrato e proteção
 
-O formulário apresenta nome completo, CPF, telefone, CEP, logradouro, número, complemento, bairro, cidade e UF, nessa ordem. O ViaCEP recebe somente o CEP. O servidor valida os campos, aplica honeypot, limite de requisições e idempotência e grava valores literais nas 12 colunas A–L descritas em `ESPECIFICAÇÃO-GS-MATERIAIS.md`.
+O formulário apresenta nome completo, CPF, telefone, CEP, logradouro, número, complemento, bairro, cidade e UF, nessa ordem. Antes do envio, a pessoa precisa autorizar o tratamento dos dados para a Ficha Branca. O ViaCEP recebe somente o CEP. O servidor valida os campos e a autorização, aplica honeypot, limite de requisições e idempotência e grava valores literais nas 13 colunas A–M descritas em `ESPECIFICAÇÃO-GS-MATERIAIS.md`; a coluna M registra `TRUE` para cada submissão aceita.
 
 Credenciais Google permanecem no ambiente server-side: `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_SHEETS_SPREADSHEET_ID` e `GOOGLE_SHEETS_TAB_NAME`. Não configure o destino de validação com a planilha anterior.
 
